@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toplantı Yönetim Uygulaması</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            width: 60%;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .form-section,
+        .list-section {
+            margin-top: 20px;
+        }
+
+        label {
+            display: block;
+            margin: 5px 0 3px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button.update {
+            background-color: #ffc107;
+        }
+
+        button.delete {
+            background-color: #dc3545;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Toplantı Yönetim Uygulaması</h1>
+
+        <!-- Toplantı Kayıt Formu -->
+        <div class="form-section" id="meetingForm">
+            <h2>Toplantı Kaydı</h2>
+            <label for="topic">Toplantı Konusu:</label>
+            <input type="text" id="topic" placeholder="Toplantı konusunu girin">
+
+            <label for="date">Tarih:</label>
+            <input type="date" id="date">
+
+            <label for="startTime">Başlangıç Saati:</label>
+            <input type="time" id="startTime">
+
+            <label for="endTime">Bitiş Saati:</label>
+            <input type="time" id="endTime">
+
+            <label for="participants">Katılımcılar:</label>
+            <textarea id="participants" placeholder="Katılımcı isimlerini virgül ile ayırarak girin"></textarea>
+
+            <button onclick="addMeeting()" id="saveBtn">Toplantıyı Kaydet</button>
+            <button onclick="clearForm()" style="background-color: #ffc107;">Yeni Toplantı Oluştur</button>
+        </div>
+
+        <!-- Toplantı Listesi -->
+        <div class="list-section">
+            <h2>Toplantı Listesi</h2>
+            <table id="meetingList">
+                <tr>
+                    <th>Toplantı Konusu</th>
+                    <th>Tarih</th>
+                    <th>Başlangıç Saati</th>
+                    <th>Bitiş Saati</th>
+                    <th>Katılımcılar</th>
+                    <th>İşlemler</th>
+                </tr>
+                <!-- Toplantı kayıtları buraya eklenecek -->
+            </table>
+        </div>
+    </div>
+    <script src= 
+    "https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.3/moment.min.js"> 
+        </script> 
+    <script>
+        let meetings = [];
+        let editIndex = ' ';
+        fetchMeetings();
+        // Toplantı ekleme fonksiyonu 
+        async function addMeeting() {
+            console.log(editIndex)
+            var prtcptns = document.getElementById('participants').value.split(',');
+            for (let i = 0; i < prtcptns.length; i++) {
+                prtcptns[i].replaceAll(' ', '');
+
+            }
+            const meeting = {
+                topic: document.getElementById('topic').value,
+                date: document.getElementById('date').value,
+                startTime: document.getElementById('startTime').value,
+                endTime: document.getElementById('endTime').value,
+                participants: prtcptns
+            }
+            console.log(meeting);
+
+            if (editIndex == ' ') {
+                try {
+                    await fetch('http://localhost:7169/api/meetings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(meeting)
+                    });
+                    fetchMeetings(); // Yeni toplantıyı aldıktan sonra listeyi güncelle
+                    clearForm(); // Formu temizle
+                    alert("Topantı Başarıyla Eklendi");
+                } catch (error) {
+                    console.error('Toplantı eklenemedi:', error);
+                    alert('Toplantı eklenemedi:', error);
+                }
+            }
+            else {
+                
+                try {
+                    await fetch('http://localhost:7169/api/meetings/' + editIndex, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(meeting)
+                    });
+                    fetchMeetings(); // Yeni toplantıyı aldıktan sonra listeyi güncelle
+                    clearForm(); // Formu temizle
+                    alert("Topantı Başarıyla Güncellendi");
+                } catch (error) {
+                    console.error('Toplantı eklenemedi:', error);
+                    alert('Toplantı Güncellenemedi:', error);
+                }
+            }
+
+            renderMeetings();
+            clearForm();
+        }
+        async function fetchMeetings() {
+            try {
+                const response = await fetch('http://localhost:7169/api/meetings');
+                const data = await response.json();
+                meetings = data;
+                renderMeetings(); // Gelen veriyi ekranda göstermek için listeleme fonksiyonu
+            } catch (error) {
+                console.error('Toplantılar getirilemedi:', error);
+            }
+        }
+        // Formu temizleme fonksiyonu
+        function clearForm() {
+            document.getElementById('topic').value = '';
+            document.getElementById('date').value = '';
+            document.getElementById('startTime').value = '';
+            document.getElementById('endTime').value = '';
+            document.getElementById('participants').value = '';
+            editIndex = ' ';
+            document.getElementById('saveBtn').textContent = 'Toplantıyı Kaydet';
+        }
+
+        // Toplantıları listeye ekleme ve güncelleme
+        function renderMeetings() {
+            const meetingList = document.getElementById('meetingList');
+            meetingList.innerHTML = `
+      <tr>
+        <th>Toplantı Konusu</th>
+        <th>Tarih</th>
+        <th>Başlangıç Saati</th>
+        <th>Bitiş Saati</th>
+        <th>Katılımcılar</th>
+        <th>İşlemler</th>
+      </tr>
+    `;
+
+            meetings.forEach((meeting, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+        <td>${meeting.topic}</td>
+        <td>${moment(meeting.date).format('DD.MM.YYYY') }</td>
+        <td>${meeting.startTime}</td>
+        <td>${meeting.endTime}</td>
+        <td>${meeting.participants}</td>
+        <td>
+          <button class="update" onclick="editMeeting('${index}')">Düzenle</button>
+          <button class="delete" onclick="deleteMeeting('${meeting.id}')">Sil</button>
+        </td>
+      `;
+                meetingList.appendChild(row);
+            });
+        }
+
+
+        // Toplantı güncelleme fonksiyonu
+        function editMeeting(index) {
+            const meeting = meetings[index];
+
+            document.getElementById('topic').value = meeting.topic;
+            document.getElementById('date').value = moment(meeting.date).format('YYYY-MM-DD');
+            document.getElementById('startTime').value = meeting.startTime;
+            document.getElementById('endTime').value = meeting.endTime;
+            document.getElementById('participants').value = meeting.participants.join(', ');
+            editIndex = meeting.id // Düzenlenecek toplantının indeksini ayarlama
+            document.getElementById('saveBtn').textContent = 'Toplantıyı Güncelle';
+            console.log(meeting)
+        }
+
+        // Toplantı silme fonksiyonu
+        async function deleteMeeting(id) {
+            try {
+                await fetch(`http://localhost:7169/api/meetings/${id}`, {
+                    method: 'DELETE'
+                });
+                fetchMeetings(); // Silme işleminden sonra listeyi güncelle
+            } catch (error) {
+                console.error('Toplantı silinemedi:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>
